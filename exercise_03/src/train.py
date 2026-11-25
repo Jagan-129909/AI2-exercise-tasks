@@ -59,6 +59,8 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, log_interva
     
         #   Step 2: Clear old gradients from the optimizer (hint: .zero_grad()).
             # TODO: your code here - clear gradients
+            
+            optimizer.zero_grad()
     
         #   Step 3: Forward pass — get model outputs from the images.
             outputs = model(images)
@@ -69,24 +71,31 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, log_interva
 
         #   Step 5: Backward pass — compute gradients from the loss (hint: .backward()).
             # TODO: your code here - backward pass
+            loss.backward()
     
         #   Step 6: Update weights with the optimizer (hint: .step()).
             # TODO: your code here - optimizer step
+            optimizer.step()
 
     
         # --- Accumulate metrics (do not modify) ---
-        batch_size = images.size(0)
-        running_loss += loss.item() * batch_size
-        running_correct += (outputs.argmax(dim=1) == labels).sum().item()
-        total_samples += batch_size
+            batch_size = images.size(0)
+            running_loss += loss.item() * batch_size
+            running_correct += (outputs.argmax(dim=1) == labels).sum().item()
+            total_samples += batch_size
 
-        if (batch_idx + 1) % log_interval == 0:
-            print(f"    Batch [{batch_idx + 1}/{len(dataloader)}] "
-                  f"Loss: {loss.item():.4f}")
 
-    epoch_loss = running_loss / total_samples
-    epoch_acc = running_correct / total_samples
-    return epoch_loss, epoch_acc
+            if (batch_idx + 1) % log_interval == 0:
+              
+              print(f"    Batch [{batch_idx + 1}/{len(dataloader)}] "
+                    
+                    f"Loss: {loss.item():.4f}")
+               
+              
+
+            epoch_loss = running_loss / total_samples
+            epoch_acc = running_correct / total_samples
+            return epoch_loss, epoch_acc
 
 
 def validate(model, dataloader, criterion, device):
@@ -114,21 +123,23 @@ def validate(model, dataloader, criterion, device):
             
             # Step 1: Move images and labels to device.
             # TODO: your code here
+            images = images.to(device)
+            labels = labels.to(device)
 
             #   Step 2: Forward pass only — no backward, no optimizer step.
             # TODO: get model outputs from the images
-            outputs = None # TODO: replace "None" and add your solution 
+            outputs = model(images)
             
             #   Step 3: Compute loss (for logging, not for training).
-            loss = None # TODO: replace "None" and add your solution
+            loss = criterion(outputs,labels)
 
         
         
         # --- Accumulate metrics (do not modify) ---
-        batch_size = images.size(0)
-        running_loss += loss.item() * batch_size
-        running_correct += (outputs.argmax(dim=1) == labels).sum().item()
-        total_samples += batch_size
+            batch_size = images.size(0)
+            running_loss += loss.item() * batch_size
+            running_correct += (outputs.argmax(dim=1) == labels).sum().item()
+            total_samples += batch_size
 
     epoch_loss = running_loss / total_samples
     epoch_acc = running_correct / total_samples
@@ -167,7 +178,11 @@ def main(config_path):
     )
 
     # TODO: get the validation dataset, similar to train dataset, use the correct transforms!
-    val_dataset = None # TODO: remove "None" and add your solution here
+    val_dataset = PlantWildDataset(
+        root_dir=os.path.join(config["data"]["root_dir"],"val"),
+        transform=get_val_transforms(image_size)
+
+    )
 
 
     # Create DataLoaders for both datasets.
@@ -181,8 +196,11 @@ def main(config_path):
     )
     # TODO: create the validation dataloader, similar to train loader, use the val_dataset instead of train_dataset
     #       everything else stays the same
-    val_loader = None
-
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=config["data"]["batch_size"],
+        shuffle=False,
+        num_workers=config["data"]["num_workers"])
 
     print(f"Train samples: {len(train_dataset)} | Val samples: {len(val_dataset)}")
     print(f"Classes: {train_dataset.classes}")
@@ -212,10 +230,16 @@ def main(config_path):
             weight_decay=config["training"]["weight_decay"],
         )
     else:
-        # TODO: Instantiate a torch.optim.SGD() optimizer with the same config values
-        #       SGD additionally has a parameter "momentum", set it to momentum=0.9
-        pass # TODO: remove "pass" and fill in your solution here
+        
+        optimizer = torch.optim.SGD(
+            model.parameters(),
+            lr=config["training"]["learning_rate"],
+            weight_decay=config["training"]["weight_decay"],
+            momentum=0.9
+
         )
+
+        
 
     # Log sample images to TensorBoard for visual verification.
     #   Fetch one batch from train_loader using next(iter(...)).

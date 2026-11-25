@@ -68,7 +68,8 @@ class PlantWildDataset(Dataset):
 
     def __len__(self):
         # TODO: Return the total number of samples that are stored in self.samples.
-        pass
+        return len(self.samples)
+        
 
     def __getitem__(self, idx):
         """
@@ -89,7 +90,12 @@ class PlantWildDataset(Dataset):
         #           to RGB ensures a consistent 3-channel input.
         #   Step 3: Apply self.transform() if it is not None.
         #   Step 4: Return (image, label).
-        pass
+        path,label = self.samples[idx]
+        image = Image.open(path).convert('RGB')
+        if self.transform:
+            image=self.transform(image)
+        return (image,label)
+        
 
 
 # ===========================================================================
